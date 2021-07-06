@@ -11,46 +11,67 @@ Created on Sat Sep 12 21:44:42 2020
 
 #%% Set up
 
-#needed packages
+#import needed packages
 import numpy as np
 import pandas as pd 
 from collections import Counter 
 import datetime
 
 
-#columns I want to keep, as selected earlier in column_selection.py
-# these lists are also built into xmls_to_DataFrame_KnownStruc
-keyword_cols = ['brief_title',
-                'condition',
-                'intervention/intervention_type',
-                'location_countries/country']
-
-date_cols = ['completion_date', 
-             'start_date']
-
-num_cols = ['eligibility/maximum_age', 
-            'eligibility/minimum_age', 
-            'enrollment']
-
-category_cols = ['eligibility/gender', 
-                 'eligibility/healthy_volunteers', 
-                 'overall_status', 
-                 'phase', 
-                 'study_design_info/primary_purpose',
-                 'study_type',
-                 'sponsors/lead_sponsor/agency_class']
-
-
-#functions for use in data cleaning
-
-def remov_duplicates(input): #gets rid of duplicate words in string and deletes common words
+#define custom functions for use in data cleaning
+def preprocess_string(input): #makes lowercase, removes punctuation and common words, fixes spelling and lemmatization
     if input==input:
-       #clean up string
-        replace_chars = ["'s", ",", "(", ")", "[", "]", ":", "&", "/", ":", "\"", "\'", "#", "$", "+", "-", "  "] #characters to delete
-        for character in replace_chars:
-            input = input.replace(character, " ")
+        #import packages
+        import nltk
+        from textblob import Word
+        from nltk.corpus import stopwords
+        import re
+        
+        #input = keyword_data['brief_title'][1] #for testing
+        
+        #make all letters lowercase, then remove punctuation and number
+        input = re.sub(r"[^a-z]"," ",input.lower())
 
+        #remove excess spaces introduced by previous step
+        input = " ".join(input.split())
+        input = input.split(" ") #split again so can iterate over it
 
+        #remove stop words
+        stop = (stopwords.words('english'))
+        input_no_stops = []
+        for word in input:
+            if word not in stop:
+                input_no_stops.append(word) #delete string if a stop word
+        
+        #clean word
+        try:
+            for word in input_no_stops:
+                word_clean = word
+                #word_clean = str(TextBlob(word_clean).correct()) #enable to fix spelling - not accurate in case of medical terms
+                word_clean = Word(word_clean).lemmatize() #remove endings
+                input_no_stops[input_no_stops.index(word)] = str(word_clean) #replace word with clean version if not a stop word
+                
+        except Exception as ex:
+            print(ex)
+            print("It's likely you don't have nltk libraries installed, follow popup to install them")
+            nltk.download() #opens downloader          
+
+        #check for stop words again
+        input_no_stops2 = []
+        for word in input_no_stops:
+            if word not in stop:
+                input_no_stops2.append(word) #delete string if a stop word
+
+            
+        input_no_stops2 = " ".join(input_no_stops2) #turn back into a string
+        #print(input_no_stops2)
+        
+        return (input_no_stops2) 
+    
+def remov_duplicates(input): #gets rid of duplicate words in string
+    if input==input:
+        #import packages
+        
         # split input string separated by space 
         input = input.split(" ") 
 
@@ -58,12 +79,11 @@ def remov_duplicates(input): #gets rid of duplicate words in string and deletes 
         for i in range(0, len(input)): 
             input[i] = "".join(input[i]) 
 
-        # now create dictionary using counter method 
-        # which will have strings as key and their  
-        # frequencies as value 
+        # now create dictionary using counter method  which will have strings as key and their frequencies as value 
+        # makes it so no repeating words within one record/feature
         UniqW = Counter(input) 
 
-        replace_chars = ["a", "A", "in", "In", "the", "The", "with", "With", "and", "And", "or", "Or", "by", "By", "to", "To", "of", "Of", "from", "From", "for", "For", "  ", "   "] #characters to replace with space
+        replace_chars = ["   ", "  "] #characters to replace with space
         
         for key in UniqW.keys():
             if key in replace_chars:
@@ -73,27 +93,25 @@ def remov_duplicates(input): #gets rid of duplicate words in string and deletes 
         # joins two adjacent elements in iterable way 
         s = " ".join(UniqW.keys()) #at this point there aren't any repeating words
         
-        
         return (s) 
     
-#%% removes repeated words for keyword_cols
+#%% clean keyword_data strings
 
 keyword_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data.csv')
 
+keyword_data = keyword_data.applymap(preprocess_string)
 
-keyword_data = keyword_data.applymap(remov_duplicates)
-
-for i in keyword_cols:
+for i in keyword_data.columns:
     print((keyword_data[i].value_counts()[0:10])/sum((keyword_data[i].value_counts())))
     print('\n')
     
 keyword_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data_clean.csv', index=False)
 
-#%% convert all dates to standard format 
+#%% clean date_data by converting all dates to standard format 
 
 date_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\date_data.csv')
 
-for i in date_cols:
+for i in date_data.columns:
     date_obj = {}
     for j in date_data[i]:
         if j ==j:
@@ -116,14 +134,14 @@ date_data['start_year'] = pd.to_datetime(date_data['start_date']).dt.year
 
 date_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\date_data_clean.csv', index=False)
 
-#%% Clean up number columns
+#%% Clean num_data 
 
 #Strips strings from number columns and converts all ages to years units
 num_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\num_data.csv')
 
 print(num_data[0:10])
 
-for i in num_cols:
+for i in num_data.columns:
     number_only = {}
     for j in num_data[i]:
         s = j
@@ -186,15 +204,18 @@ print(num_data[0:10])
 num_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\num_data_clean.csv', index=False)
        
 
-#%%  Clean up category columns
+#%%  Clean category_data
 
 category_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\category_data.csv')
+
+#clean strings
+category_data = category_data.applymap(preprocess_string)
 
 #remove duplicate words 
 category_data = category_data.applymap(remov_duplicates)
 
     
-#combine some categories as appropriate
+#combine some category values as appropriate
         
 category_data['phase'] = category_data['phase'].replace('Phase 1 2', "Phase 1")
 category_data['phase'] = category_data['phase'].replace('Phase 2 3', "Phase 2")
@@ -205,7 +226,7 @@ category_data['study_type'] = category_data['study_type'].replace('Expanded Acce
 
 category_data['phase'] = category_data['phase'].replace('N A', np.nan)
 
-#get list of study_design_info values that occur less than 5% of the time
+#get list of study_design_info values that occur less than 2% of the time
 other_values = (category_data['study_design_info/primary_purpose'].value_counts()/sum((category_data['study_design_info/primary_purpose'].value_counts())) < 0.02)
 
 #combine uncommon study_design_info values in an 'other' category
@@ -229,7 +250,7 @@ for i in other_values[other_values].index:
     
     
 #print unique value counts to show changes that have taken effect
-for i in category_cols:
+for i in category_data.columns:
     print((category_data[i].value_counts()[0:10])/sum((category_data[i].value_counts())))
     print('\n')
     

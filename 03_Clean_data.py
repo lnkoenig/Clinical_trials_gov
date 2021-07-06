@@ -12,15 +12,14 @@ Created on Sat Sep 12 21:44:42 2020
 #%% Set up
 
 #import needed packages
-import numpy as np
 import pandas as pd 
 from collections import Counter 
 import datetime
-
+from nltk import ngrams
 
 #define custom functions for use in data cleaning
-def preprocess_string(input): #makes lowercase, removes punctuation and common words, fixes spelling and lemmatization
-    if input==input:
+def preprocess_string(input): #makes lowercase, removes punctuation, removes stop words, lemmatization
+    try :
         #import packages
         import nltk
         from textblob import Word
@@ -30,7 +29,7 @@ def preprocess_string(input): #makes lowercase, removes punctuation and common w
         #input = keyword_data['brief_title'][1] #for testing
         
         #make all letters lowercase, then remove punctuation and number
-        input = re.sub(r"[^a-z]"," ",input.lower())
+        input = re.sub( r"[^a-z0-9]" , " " , input.lower() )
 
         #remove excess spaces introduced by previous step
         input = " ".join(input.split())
@@ -65,15 +64,16 @@ def preprocess_string(input): #makes lowercase, removes punctuation and common w
             
         input_no_stops2 = " ".join(input_no_stops2) #turn back into a string
         #print(input_no_stops2)
-        
         return (input_no_stops2) 
+    except :
+        return (input) 
     
-def remov_duplicates(input): #gets rid of duplicate words in string
+def remov_duplicates(input, sep_val=" "): #gets rid of duplicate words in string
     if input==input:
         #import packages
         
         # split input string separated by space 
-        input = input.split(" ") 
+        input = input.split(sep_val) 
 
         # joins two adjacent elements in iterable way 
         for i in range(0, len(input)): 
@@ -91,19 +91,39 @@ def remov_duplicates(input): #gets rid of duplicate words in string
                 break
 
         # joins two adjacent elements in iterable way 
-        s = " ".join(UniqW.keys()) #at this point there aren't any repeating words
+        s = sep_val.join(UniqW.keys()) #at this point there aren't any repeating words
         
         return (s) 
+
     
 #%% clean keyword_data strings
 
 keyword_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data.csv')
 
+for i in keyword_data.columns:
+    column_data = keyword_data[i].str.cat(sep=" ")   
+    ngram_counts = Counter(ngrams(column_data.split(" "), 1))
+    print(i)
+    print(ngram_counts.most_common(10))
+
+#remove duplicate entries (not single words, but when one value was recorded multiple times)
+for i in keyword_data.columns: #applymap doesn't accept multiple arguments
+    keyword_data[i] = keyword_data[i].apply(remov_duplicates, " ; ")
+
+#remove punctuation and stop words, lemmitize endings 
 keyword_data = keyword_data.applymap(preprocess_string)
 
+#apply the remove duplicates again but on individual words, and only for the title values
+#if applied to all then 'united states; united kingdom' becomes 'united states; kingdom'
+keyword_data['brief_title'] = keyword_data['brief_title'].apply(remov_duplicates)
+
 for i in keyword_data.columns:
-    print((keyword_data[i].value_counts()[0:10])/sum((keyword_data[i].value_counts())))
-    print('\n')
+    column_data = keyword_data[i].str.cat(sep=" ")   
+    ngram_counts = Counter(ngrams(column_data.split(" "), 1))
+    print(i)
+    print(ngram_counts.most_common(5))
+    print(Counter(ngrams(column_data.split(" "), 2)).most_common(5))
+
     
 keyword_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data_clean.csv', index=False)
 
@@ -208,50 +228,33 @@ num_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\num_data_cle
 
 category_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\category_data.csv')
 
-#clean strings
-category_data = category_data.applymap(preprocess_string)
-
 #remove duplicate words 
-category_data = category_data.applymap(remov_duplicates)
+#category_data = category_data.applymap(remov_duplicates)
 
+for i in category_data.columns:
+    print((category_data[i].value_counts())/sum((category_data[i].value_counts())))
+    print('\n')
     
-#combine some category values as appropriate
-        
-category_data['phase'] = category_data['phase'].replace('Phase 1 2', "Phase 1")
-category_data['phase'] = category_data['phase'].replace('Phase 2 3', "Phase 2")
-category_data['phase'] = category_data['phase'].replace('Early Phase 1', "Phase 1")
-
-category_data['study_type'] = category_data['study_type'].replace('Observational Patient Registry', "Observational")
-category_data['study_type'] = category_data['study_type'].replace('Expanded Access', "N A")
-
-category_data['phase'] = category_data['phase'].replace('N A', np.nan)
-
-#get list of study_design_info values that occur less than 2% of the time
-other_values = (category_data['study_design_info/primary_purpose'].value_counts()/sum((category_data['study_design_info/primary_purpose'].value_counts())) < 0.02)
-
-#combine uncommon study_design_info values in an 'other' category
-for i in other_values[other_values].index:
-    category_data['study_design_info/primary_purpose'] = category_data['study_design_info/primary_purpose'].replace(i, "Other")
-
-#get list of sponsors.lead_sponsor.agency_class values that occur less than 5% of the time
-other_values = (category_data['sponsors/lead_sponsor/agency_class'].value_counts()/sum((category_data['sponsors/lead_sponsor/agency_class'].value_counts())) < 0.02)
-
-#combine uncommon sponsors.lead_sponsor.agency_class values in an 'other' category
-for i in other_values[other_values].index:
-    category_data['sponsors/lead_sponsor/agency_class'] = category_data['sponsors/lead_sponsor/agency_class'].replace(i, "Other")
-
-#get list of study_type values that occur less than 5% of the time
-other_values = (category_data['study_type'].value_counts()/sum((category_data['study_type'].value_counts())) < 0.02)
-
-#delete uncommon values 
-for i in other_values[other_values].index:
-    category_data['study_type'] = category_data['study_type'].replace(i, None)
+#Combine infrequent values into "other" categories
+for i in category_data.columns:
+    #set percentage want as the minimum frequency each value occurs in a column
+    cut_off = 0.01
     
+    #get list of values that occur less than cutoff frequency
+    other_values = category_data[i].value_counts()/sum((category_data[i].value_counts())) < cut_off
+
+    #combine uncommon values in an 'other' category
+    for val in other_values[other_values].index:
+        category_data[i] = category_data[i].replace(val, "Other")
+    
+    #if the 'other' category is still below the cut off make them all NA instead
+    if len(category_data[i][category_data[i] == 'Other'])/len(category_data[i]) < cut_off:
+        category_data[i] = category_data[i].replace('Other', None)
     
     
 #print unique value counts to show changes that have taken effect
 for i in category_data.columns:
-    print((category_data[i].value_counts()[0:10])/sum((category_data[i].value_counts())))
+    print((category_data[i].value_counts())/sum((category_data[i].value_counts())))
     print('\n')
     
     

@@ -12,6 +12,7 @@ Created on Sat Sep 12 21:44:42 2020
 #%% Set up
 
 #import needed packages
+#pip install -U textblob
 import pandas as pd 
 from collections import Counter 
 import datetime
@@ -19,55 +20,56 @@ from nltk import ngrams
 
 #define custom functions for use in data cleaning
 def preprocess_string(input): #makes lowercase, removes punctuation, removes stop words, lemmatization
-    try :
-        #import packages
-        import nltk
-        from textblob import Word
-        from nltk.corpus import stopwords
-        import re
-        
-        #input = keyword_data['brief_title'][1] #for testing
-        
-        #make all letters lowercase, then remove punctuation and number
-        input = re.sub( r"[^a-z0-9]" , " " , input.lower() )
-
-        #remove excess spaces introduced by previous step
-        input = " ".join(input.split())
-        input = input.split(" ") #split again so can iterate over it
-
-        #remove stop words
-        stop = (stopwords.words('english'))
-        input_no_stops = []
-        for word in input:
-            if word not in stop:
-                input_no_stops.append(word) #delete string if a stop word
-        
-        #clean word
+    if input == input:
         try:
-            for word in input_no_stops:
-                word_clean = word
-                #word_clean = str(TextBlob(word_clean).correct()) #enable to fix spelling - not accurate in case of medical terms
-                word_clean = Word(word_clean).lemmatize() #remove endings
-                input_no_stops[input_no_stops.index(word)] = str(word_clean) #replace word with clean version if not a stop word
-                
-        except Exception as ex:
-            print(ex)
-            print("It's likely you don't have nltk libraries installed, follow popup to install them")
-            nltk.download() #opens downloader          
-
-        #check for stop words again
-        input_no_stops2 = []
-        for word in input_no_stops:
-            if word not in stop:
-                input_no_stops2.append(word) #delete string if a stop word
-
+            #import packages
+            import nltk
+            from textblob import Word
+            from nltk.corpus import stopwords
+            import re
             
-        input_no_stops2 = " ".join(input_no_stops2) #turn back into a string
-        #print(input_no_stops2)
-        return (input_no_stops2) 
-    except :
-        return (input) 
+            #input = keyword_data['brief_title'][1] #for testing
+            
+            #make all letters lowercase, then remove punctuation and number
+            input = re.sub( r"[^a-z0-9]" , " " , input.lower() )
     
+            #remove excess spaces introduced by previous step
+            input = " ".join(input.split())
+            input = input.split(" ") #split again so can iterate over it
+    
+            #remove stop words
+            stop = (stopwords.words('english'))
+            input_no_stops = []
+            for word in input:
+                if word not in stop:
+                    input_no_stops.append(word) #delete string if a stop word
+            
+            #clean word
+            try:
+                for word in input_no_stops:
+                    word_clean = word
+                    #word_clean = str(TextBlob(word_clean).correct()) #enable to fix spelling - not accurate in case of medical terms
+                    word_clean = Word(word_clean).lemmatize() #remove endings
+                    input_no_stops[input_no_stops.index(word)] = str(word_clean) #replace word with clean version if not a stop word
+                    
+            except Exception as ex:
+                print(ex)
+                print("It's likely you don't have nltk libraries installed, follow popup to install them")
+                nltk.download() #opens downloader          
+    
+            #check for stop words again
+            input_no_stops2 = []
+            for word in input_no_stops:
+                if word not in stop:
+                    input_no_stops2.append(word) #delete string if a stop word
+    
+                
+            input_no_stops2 = " ".join(input_no_stops2) #turn back into a string
+            #print(input_no_stops2)
+            return (input_no_stops2) 
+        except:
+            return (input)
+        
 def remov_duplicates(input, sep_val=" "): #gets rid of duplicate words in string
     if input==input:
         #import packages
@@ -100,15 +102,9 @@ def remov_duplicates(input, sep_val=" "): #gets rid of duplicate words in string
 
 keyword_data = pd.read_csv('data-clean\keyword_data.csv')
 
-for i in keyword_data.columns:
-    column_data = keyword_data[i].str.cat(sep=" ")   
-    ngram_counts = Counter(ngrams(column_data.split(" "), 1))
-    print(i)
-    print(ngram_counts.most_common(10))
-
 #remove duplicate entries (not single words, but when one value was recorded multiple times)
 for i in keyword_data.columns: #applymap doesn't accept multiple arguments
-    keyword_data[i] = keyword_data[i].apply(remov_duplicates, " ; ")
+    keyword_data[i] = keyword_data[i].apply(remov_duplicates,sep_val= " ; ")
 
 #remove punctuation and stop words, lemmitize endings 
 keyword_data = keyword_data.applymap(preprocess_string)
@@ -117,13 +113,12 @@ keyword_data = keyword_data.applymap(preprocess_string)
 #if applied to all then 'united states; united kingdom' becomes 'united states; kingdom'
 keyword_data['brief_title'] = keyword_data['brief_title'].apply(remov_duplicates)
 
+#print some ngrams to see if it worked
 for i in keyword_data.columns:
     column_data = keyword_data[i].str.cat(sep=" ")   
-    ngram_counts = Counter(ngrams(column_data.split(" "), 1))
+    ngram_counts = Counter(ngrams(column_data.split(" "), 2))
     print(i)
     print(ngram_counts.most_common(5))
-    print(Counter(ngrams(column_data.split(" "), 2)).most_common(5))
-
     
 keyword_data.to_csv('data-clean\keyword_data_clean.csv', index=False)
 

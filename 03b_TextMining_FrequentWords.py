@@ -14,7 +14,7 @@ import pandas as pd
 from collections import Counter
 from nltk import ngrams
 
-keyword_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data_clean.csv')
+keyword_data = pd.read_csv('data-clean\keyword_data_clean.csv')
 keyword_data = keyword_data[0:40]
 
 

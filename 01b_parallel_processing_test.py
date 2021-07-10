@@ -16,7 +16,7 @@ import pandas as pd
 
 #First grab all the xml file paths in first folder
 xmlfiles = [] #list to hold all the xml file names
-for file in glob.glob("./Data/NCT0000xxxx/NCT*.xml", recursive=True): #searching for all xml in first folder
+for file in glob.glob("data-raw/NCT0000xxxx/NCT*.xml", recursive=True): #searching for all xml in first folder
     xmlfiles.append(file) #adds xml file to the list of file names
 
 print(len(xmlfiles))

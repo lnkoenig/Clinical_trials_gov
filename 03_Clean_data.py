@@ -98,7 +98,7 @@ def remov_duplicates(input, sep_val=" "): #gets rid of duplicate words in string
     
 #%% clean keyword_data strings
 
-keyword_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data.csv')
+keyword_data = pd.read_csv('data-clean\keyword_data.csv')
 
 for i in keyword_data.columns:
     column_data = keyword_data[i].str.cat(sep=" ")   
@@ -125,11 +125,11 @@ for i in keyword_data.columns:
     print(Counter(ngrams(column_data.split(" "), 2)).most_common(5))
 
     
-keyword_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data_clean.csv', index=False)
+keyword_data.to_csv('data-clean\keyword_data_clean.csv', index=False)
 
 #%% clean date_data by converting all dates to standard format 
 
-date_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\date_data.csv')
+date_data = pd.read_csv('data-clean\date_data.csv')
 
 for i in date_data.columns:
     date_obj = {}
@@ -152,12 +152,12 @@ date_data['days_to_completion'] = (date_data['completion_date'] - date_data['sta
 date_data['start_year'] = pd.to_datetime(date_data['start_date']).dt.year
 
 
-date_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\date_data_clean.csv', index=False)
+date_data.to_csv('data-clean\date_data_clean.csv', index=False)
 
 #%% Clean num_data 
 
 #Strips strings from number columns and converts all ages to years units
-num_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\num_data.csv')
+num_data = pd.read_csv('data-clean\num_data.csv')
 
 print(num_data[0:10])
 
@@ -221,12 +221,12 @@ for i in num_data.columns:
 
 
 print(num_data[0:10])
-num_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\num_data_clean.csv', index=False)
+num_data.to_csv('data-clean\num_data_clean.csv', index=False)
        
 
 #%%  Clean category_data
 
-category_data = pd.read_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\category_data.csv')
+category_data = pd.read_csv('data-clean\category_data.csv')
 
 #remove duplicate words 
 #category_data = category_data.applymap(remov_duplicates)
@@ -258,9 +258,9 @@ for i in category_data.columns:
     print('\n')
     
     
-category_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\category_data_clean.csv', index=False)
+category_data.to_csv('data-clean\category_data_clean.csv', index=False)
    
 #%%  Combine data into one dataframe
 all_data = pd.concat([date_data, num_data, category_data], axis=1)
 
-all_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\all_data_clean.csv', index=False)
+all_data.to_csv('data-clean\all_data_clean.csv', index=False)

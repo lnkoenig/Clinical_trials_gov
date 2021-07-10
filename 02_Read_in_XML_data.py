@@ -93,7 +93,7 @@ date_data = clin_data[date_cols]
 num_data = clin_data[num_cols]
 category_data = clin_data[category_cols]
 
-keyword_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\keyword_data.csv', index=False)
-date_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\date_data.csv', index=False)
-num_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\num_data.csv', index=False)
-category_data.to_csv(r'C:\Users\lkoen\BOX\Clinical_trials_gov\data-clean\category_data.csv', index=False)
+keyword_data.to_csv('data-clean\keyword_data.csv', index=False)
+date_data.to_csv('data-clean\date_data.csv', index=False)
+num_data.to_csv('data-clean\num_data.csv', index=False)
+category_data.to_csv('data-clean\category_data.csv', index=False)

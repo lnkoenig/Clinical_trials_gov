@@ -20,11 +20,11 @@ from xmls_to_DataFrame_functions import xmls_to_DataFrame_UnknownStruc
 xmlfiles = [] #list to hold all the xml file names
 
 #searching for all xml in first folder
-for file in glob.glob("./Data/NCT0000xxxx/NCT*.xml", recursive=True): 
+for file in glob.glob("data-raw/NCT0000xxxx/NCT*.xml", recursive=True): 
     xmlfiles.append(file) #adds xml file to the list of file names
 
 #searching for all xml files in last folder (in case columns in use change over time I wanted to use both the oldest and newest folder
-for file in glob.glob("Data/NCT0446xxxx/NCT*.xml", recursive=True): 
+for file in glob.glob("data-raw/NCT0446xxxx/NCT*.xml", recursive=True): 
     xmlfiles.append(file) #adds xml file to the list of file names
 len(xmlfiles)
 

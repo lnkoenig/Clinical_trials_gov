@@ -255,7 +255,3 @@ for i in category_data.columns:
     
 category_data.to_csv('data-clean\category_data_clean.csv', index=False)
    
-#%%  Combine data into one dataframe
-all_data = pd.concat([date_data, num_data, category_data], axis=1)
-
-all_data.to_csv('data-clean\all_data_clean.csv', index=False)

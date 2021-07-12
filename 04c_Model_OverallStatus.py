@@ -2,7 +2,7 @@
 """
 Description:
     Trying to classify which of the completed clinical trials were completed successfully vs. those that were terminated/cancelled
-    Not using keyword data yet as text processing takes a lot more effort
+    Now including keyword data
 
 Created on Fri Jul  2 18:51:27 2021
 @author: lauren koenig
@@ -23,20 +23,23 @@ from sklearn.neural_network import MLPClassifier
 from sklearn import ensemble
 
 date_data = pd.read_csv('data-clean\date_data_clean.csv')
-num_data = pd.read_csv('data-clean\num_data_clean.csv')
+num_data = pd.read_csv(r'data-clean\num_data_clean.csv')
 category_data = pd.read_csv('data-clean\category_data_clean.csv')
+keyword_data = pd.read_csv('data-clean\keyword_data_clean_ngrams.csv')
 
 
-all_data = pd.concat([date_data, num_data, category_data], axis=1)
+all_data = pd.concat([date_data, num_data, category_data, keyword_data], axis=1)
 
+del [date_data, num_data, category_data, keyword_data]
 
 #%% Prep for classification - select features, scale, impute, split into train and test
 
 #remove rows with prediction variable values that aren't of interest
-all_data = all_data[~all_data.overall_status.isin(['Recruiting', 'Unknown status', 'Active not recruiting', 'Not yet recruiting','Enrolling invitation', 'Available', 'Approved marketing', 'Temporarily not available'])]; #remove ongoing trials -only want complete and ended trials (terminated, withdrawn, suspended, witheld, no longer available )
+all_data = all_data[~all_data.overall_status.isin(['Recruiting', 'Unknown status', 'Active, not recruiting', 'Not yet recruiting','Other'])]; #remove ongoing trials -only want complete and ended trials (terminated, withdrawn, suspended, witheld, no longer available )
 
 #print remaining values to make sure only includes the ones we want
 print (all_data.overall_status.value_counts(normalize=True))
+min_accuracy = round(all_data.overall_status.value_counts(normalize=True)[0]*100)
 
 #separate independent and dependent variables
 x = all_data.loc[:, all_data.columns != 'overall_status']
@@ -72,7 +75,7 @@ x = SimpleImputer(missing_values=np.nan, strategy='mean').fit_transform(x)
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=1)
 
 #remove extra variables to save memory
-del [all_data, x, y]
+del [all_data, x, y, cat, category_cols, elem, num_cols]
 
 ### Now we're ready to try some different algorithms
 
@@ -83,9 +86,10 @@ knn_fit = KNeighborsClassifier(n_neighbors = 5).fit(x_train, y_train)
 
 # Test
 knn_accuracy =  np.round(knn_fit.score(x_test, y_test)*100)
-del [knn_fit]
+print(knn_accuracy) #86%
 
-knn_accuracy #87% - not really better than no information
+if knn_accuracy <= min_accuracy: #save space by deleting non useful models
+    del [knn_fit]
 
 
 #%% Train and Test Logistic regression with cross validation 
@@ -95,10 +99,10 @@ log_cv_fit = LogisticRegressionCV(max_iter=5000).fit(x_train, y_train)
 
 #Test
 log_cv_accuracy = np.round(log_cv_fit.score(x_test, y_test)*100)
-del [log_cv_fit]
-log_cv_accuracy #86%
+print(log_cv_accuracy) #87%
 
-
+if log_cv_accuracy <= min_accuracy: #save space by deleting non useful models
+    del [log_cv_fit]
 
 #%% Train and Test Support Vector Machine (SVM)
 
@@ -109,10 +113,10 @@ log_cv_accuracy #86%
 #
 ##Test
 #svm_accuracy = np.round(svm_fit.score(x_test, y_test)*100)
-#del [svm_fit]
-#svm_accuracy
-
-
+#print(svm_accuracy)
+#
+#if svm_accuracy <= min_accuracy: #save space by deleting non useful models
+#    del [svm_fit]
 
 #%% Train and Test Classification and Regression Tree (CART)
 
@@ -121,10 +125,10 @@ tree_fit = DecisionTreeClassifier().fit(x_train, y_train)
 
 #Test
 tree_accuracy = np.round(tree_fit.score(x_test, y_test)*100)
-del [tree_fit]
+print(tree_accuracy) #86%
 
-tree_accuracy #nope 84%
-
+if tree_accuracy <= min_accuracy: #save space by deleting non useful models
+    del [tree_fit]
 
 #%% Train and Test Random Forest
 
@@ -133,11 +137,11 @@ forest_fit = ensemble.RandomForestClassifier().fit(x_train, y_train)
 
 #Test
 forest_accuracy = np.round(forest_fit.score(x_test, y_test)*100)
-del [forest_fit]
+print(forest_accuracy) #91%
 
-forest_accuracy #89%
-
-
+if forest_accuracy <= min_accuracy: #save space by deleting non useful models
+    del [forest_fit]
+    
 #%% Train and Test multi-layer perceptron (MLP) 
 
 #Train
@@ -145,9 +149,11 @@ mlp_fit = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), r
 
 #Test
 mlp_accuracy =np.round(mlp_fit.score(x_test, y_test)*100)
-del [mlp_fit]
-mlp_accuracy #86%
+print(mlp_accuracy) #86%
 
+if mlp_accuracy <= min_accuracy: #save space by deleting non useful models
+    del [mlp_fit]
+    
 #%% Train and Test Gradient Boosted Decision Tree
 
 #Train
@@ -155,13 +161,18 @@ GB_fit = ensemble.GradientBoostingClassifier().fit(x_train, y_train)
 
 #Test
 GB_accuracy = np.round(GB_fit.score(x_test, y_test)*100)
-GB_accuracy #91% - highest so keeping it
+print(GB_accuracy) #92% - highest so keeping it
 
+if GB_accuracy <= min_accuracy: #save space by deleting non useful models
+    del [GB_fit]
 
+#%% Examine features in best model
 
 GB_features =  pd.Series(GB_fit.feature_importances_, index=features)
 GB_features.sort_values(ascending=False)[0:5]
-#primarily driven by enrollment, which is updated as the study goes so not really useful
+#primarily driven by enrollment, which is updated as the study goes 
+#so enrollment not really a fair predictor, wouldn't apply to new trials
+
 
 #%% Train and Test Gradient Boosted Decision Tree without Enrollment feature
 
@@ -169,12 +180,14 @@ GB_features.sort_values(ascending=False)[0:5]
 x_train2 = np.delete(x_train, features.index('enrollment'), axis=1)
 x_test2 = np.delete(x_test, features.index('enrollment'), axis=1)
 features2 =  [x for x in features if x != 'enrollment']
+
 #Train
 GB_fit2 = ensemble.GradientBoostingClassifier().fit(x_train2, y_train)
 
 #Test
 GB_accuracy2 = np.round(GB_fit2.score(x_test2, y_test)*100)
-print (GB_accuracy2) #86% - back down to no info levels (because 86% of the data is complete, results are same as if chance)
+print (GB_accuracy2) #87% - model no longer works without enrollment
+
 
 GB_features2 =  pd.Series(GB_fit2.feature_importances_, index=features2)
 GB_features2.sort_values(ascending=False)[0:5]
